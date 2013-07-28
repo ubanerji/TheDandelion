@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.view.Menu;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements Game{
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,5 +19,39 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
-    
+
+    @Override
+    public Audio getAudio() {
+        return null;
+    }
+
+    @Override
+    public Input getInput() {
+        return null;
+    }
+
+    @Override
+    public FileIO getFileIO() {
+        return null;
+    }
+
+    @Override
+    public Graphics getGraphics() {
+        return null;
+    }
+
+    @Override
+    public void setScreen(Screen screen) {
+
+    }
+
+    @Override
+    public Screen getCurrentScreen() {
+        return null;
+    }
+
+    @Override
+    public Screen getInitScreen() {
+        return null;
+    }
 }
