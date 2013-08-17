@@ -1,9 +1,9 @@
-package com.dandelion.app;
+package com.dandelion.app.Framework;
 
 /**
  * Created by ubanerji on 7/27/13.
  */
-import com.dandelion.app.Graphics.ImageFormat;
+import com.dandelion.app.Framework.Graphics.ImageFormat;
 
 public interface Image {
     public int getWidth();

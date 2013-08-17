@@ -1,4 +1,6 @@
-package com.dandelion.app;
+package com.dandelion.app.Framework;
+
+import com.dandelion.app.Framework.Game;
 
 /**
  * Created by ubanerji on 7/27/13.
