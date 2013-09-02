@@ -35,7 +35,6 @@ public abstract class AndroidGame extends Activity implements Game {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Log.e("Dandlion","Here1");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -51,8 +50,6 @@ public abstract class AndroidGame extends Activity implements Game {
         float scaleY = (float) frameBufferHeight
                 / getWindowManager().getDefaultDisplay().getHeight();
 
-        Log.e("Dandlion","Here2");
-
         renderView = new AndroidFastRenderView(this, frameBuffer);
         graphics = new AndroidGraphics(getAssets(), frameBuffer);
         fileIO = new AndroidFileIO(this);
@@ -60,8 +57,6 @@ public abstract class AndroidGame extends Activity implements Game {
         input = new AndroidInput(this, renderView, scaleX, scaleY);
         screen = getInitScreen();
         setContentView(renderView);
-
-        Log.e("Dandlion","Here3");
 
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK, "MyGame");

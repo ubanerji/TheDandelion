@@ -1,19 +1,49 @@
 package com.dandelion.app;
 
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.util.Log;
 
 import com.dandelion.app.Framework.Game;
 import com.dandelion.app.Framework.Graphics;
+import com.dandelion.app.Framework.Image;
 import com.dandelion.app.Framework.Input.TouchEvent;
 import com.dandelion.app.Framework.Screen;
+import com.dandelion.app.Generic.AndroidGame;
+import com.dandelion.app.Generic.AndroidImage;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Created by ubanerji on 8/11/13.
  */
 public class GameScreen extends Screen {
+
+    private static Background bg1, bg2;
+    private static int dStock;
+    private Image image, background, dandelion;
+    public static Image tiledirt, tilegrassTop, tilegrassBot;
+   // private Graphics2D second;
+    public static ArrayList<Dandelion> ddarray = new ArrayList<Dandelion>();
+    private ArrayList<Tile> tilearray = new ArrayList<Tile>();
+    private int elapsedTime;
+    private Random r = new Random();
+    private Wind bgWind;
+    private float rotationRequired;
+    private double locationX;
+    private double locationY;
+
+
     enum GameState {
         Ready, Running, Paused, GameOver
     }
@@ -25,6 +55,8 @@ public class GameScreen extends Screen {
 
     int livesLeft = 1;
     Paint paint;
+
+    int xPos = 0;
 
     public GameScreen(Game game) {
         super(game);
@@ -38,6 +70,45 @@ public class GameScreen extends Screen {
         paint.setAntiAlias(true);
         paint.setColor(Color.WHITE);
 
+        //Load up the backgroung Image
+        background = game.getGraphics().newImage("background.png", Graphics.ImageFormat.RGB565);
+
+        dandelion = game.getGraphics().newImage("dandelion.png", Graphics.ImageFormat.RGB565);
+        tiledirt = game.getGraphics().newImage("tiledirt.png", Graphics.ImageFormat.RGB565);
+        tilegrassTop = game.getGraphics().newImage("tilegrasstop.png", Graphics.ImageFormat.RGB565);
+        tilegrassBot = game.getGraphics().newImage("tilegrassbot.png", Graphics.ImageFormat.RGB565);
+
+
+        bg1 = new Background(0,0);
+        bg2 = new Background(2160,0);
+        bg1.setSpeedX(-1);
+        bg2.setSpeedX(-1);
+        dStock = 5; // initialize # of dandelions
+        elapsedTime = 0;
+        bgWind = new Wind(2,1);
+        try{
+            loadMap("map1.txt");
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    public static ArrayList<Dandelion> getDdarray() {
+        return ddarray;
+    }
+
+    public void setDdarray(ArrayList<Dandelion> ddarray) {
+        this.ddarray = ddarray;
+    }
+
+    private void paintTiles(Graphics g) {
+        for (int i = 0; i < tilearray.size(); i++) {
+            Tile t = (Tile) tilearray.get(i);
+            if (t.getType() != 0) {
+                g.drawImage(t.getTileImage(), t.getTileX(), t.getTileY());
+            }
+        }
     }
 
     @Override
@@ -106,6 +177,12 @@ public class GameScreen extends Screen {
 
         }
 
+        //
+        //while (state == GameState.Running)
+        //{
+
+        //}
+
         // 2. Check miscellaneous events like death:
 
         if (livesLeft == 0) {
@@ -151,8 +228,8 @@ public class GameScreen extends Screen {
         // First draw the game elements.
 
         // Example:
-        // g.drawImage(Assets.background, 0, 0);
-        // g.drawImage(Assets.character, characterX, characterY);
+        g.drawImage(background, 0, 0);
+        //g.drawImage(Assets.character, characterX, characterY);
 
         // Secondly, draw the UI above the game elements.
         if (state == GameState.Ready)
@@ -185,9 +262,51 @@ public class GameScreen extends Screen {
 
     }
 
+    private void updateTiles() {
+        for (int i = 0; i < tilearray.size(); i++) {
+            Tile t = (Tile) tilearray.get(i);
+            t.update();
+        }
+    }
+
     private void drawRunningUI() {
         Graphics g = game.getGraphics();
 
+        bg1.update();
+        bg2.update();
+        if(dStock> 0){
+            if((elapsedTime % 100 == 0)){
+                Dandelion dd = new Dandelion(200, 200);
+                ddarray.add(dd);
+                dStock -= 1;
+            }
+        }
+        for(int i=0;i< ddarray.size(); i++){
+            Dandelion dd = ddarray.get(i);
+            if(elapsedTime % 4 ==0){
+                dd.setSpeedX(r.nextInt(6)-2+ bgWind.getSpeedX());
+                dd.setSpeedY(r.nextInt(4)-2+ bgWind.getSpeedY());
+                dd.update();
+            }
+        }
+        if(elapsedTime % 1 == 0){
+            updateTiles();
+        }
+        if(bg1.getBgX() < -2160){
+            bg1.setBgX(2160);
+        }
+        if(bg2.getBgX() < -2160){
+            bg2.setBgX(2160);
+        }
+
+        g.drawImage(background, bg1.getBgX(), bg1.getBgY());
+        g.drawImage(background, bg2.getBgX(), bg2.getBgY());
+
+        paintTiles(g);
+        for(int i =0; i< ddarray.size(); i++){
+            Dandelion dd = ddarray.get(i);
+            g.drawImage(dandelion, dd.getCenterX(), dd.getCenterY());
+        }
     }
 
     private void drawPausedUI() {
@@ -224,5 +343,38 @@ public class GameScreen extends Screen {
     @Override
     public void backButton() {
         pause();
+    }
+
+    private void loadMap(String filename) throws IOException {
+        // TODO Auto-generated method stub
+        ArrayList lines= new ArrayList();
+        int width = 0;
+        int height = 0;
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(game.getFileIO().readAsset(filename)));
+        while(true){
+            String line = reader.readLine();
+            if(line == null ){
+                reader.close();
+                break;
+            }
+            if(!line.startsWith("!")){
+                lines.add(line);
+                width= Math.max(width, line.length());
+            }
+        }
+        height = lines.size();
+        for(int j = 0; j< 10;j++){
+            String line = (String) lines.get(j);
+            for ( int i=0; i< width ; i++) {
+                if(i < line.length()) {
+                    char ch = line.charAt(i);
+                    Tile t = new Tile(i,j,Character.getNumericValue(ch));
+                    tilearray.add(t);
+                }
+            }
+        }
+
+
     }
 }
