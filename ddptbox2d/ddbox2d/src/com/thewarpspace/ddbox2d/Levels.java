@@ -3,8 +3,11 @@ package com.thewarpspace.ddbox2d;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -18,7 +21,9 @@ import com.thewarpspace.ddbox2d.renderers.WorldRenderer;
 
 public class Levels {
 	int width = 0;
-	int height = 0;	  
+	int height = 0;	 
+	public static float tileWidth;
+	public static float tileHeight;
     static final float WORLD_TO_BOX=0.01f;  
     static final float BOX_WORLD_TO=100f;  
     ArrayList<Fixture> tileArrayModifiable = new ArrayList<Fixture>();
@@ -33,7 +38,23 @@ public class Levels {
 	public int getHeight() {
 		return height;
 	}
-	
+
+	public static float getTileWidth() {
+		return tileWidth;
+	}
+
+	public static void setTileWidth(float tileWidth) {
+		Levels.tileWidth = tileWidth;
+	}
+
+	public static float getTileHeight() {
+		return tileHeight;
+	}
+
+	public static void setTileHeight(float tileHeight) {
+		Levels.tileHeight = tileHeight;
+	}
+
 	public ArrayList<Fixture> getTileArrayModifiable() {
 		return tileArrayModifiable;
 	}
@@ -58,22 +79,20 @@ public class Levels {
         tileCircle.dispose();
 	}
 
-	public Levels(World world, WorldRenderer renderer){
+	public Levels(World world){
 		try {
-			loadMap("C:/Users/Bo/Documents/GitHub/ddptbox2d/ddbox2d-android/assets/data/map2.txt", world, renderer);
-			// I don't know how to make the relative reference to the assets correct, as they are stored under -android
-			// I don't know how to make this function working with Gdx.files.internal, which should be the correct practice
+			loadMap("data/map2.txt", world);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	private void loadMap(String string, World world, WorldRenderer renderer) throws IOException {
+	private void loadMap(String filename, World world) throws IOException {
 		// TODO Auto-generated method stub
 		ArrayList lines= new ArrayList();	
-		BufferedReader reader = new BufferedReader(new FileReader(string));
-		Fixture tileFixture;
+		BufferedReader reader = new BufferedReader(new InputStreamReader(Gdx.files.internal(filename).read()));
+		Fixture tileFixture;	
 		
 		while(true){
 			String line = reader.readLine();
@@ -87,6 +106,8 @@ public class Levels {
 			}
 		}		
 		height = lines.size();
+		tileWidth = (float) (480.0/(1.0*width));
+		tileHeight = (float) (320.0/(1.0*height));
 		System.out.println(width);
 		System.out.println(height);
 		for(int j = 0; j< 50;j++){
@@ -98,19 +119,19 @@ public class Levels {
 						if( Character.getNumericValue(ch) == 2){ // side walls
 						   // the numbers allow making tiles of different properties
 						   BodyDef tileBodyDef = new BodyDef();
-						   tileBodyDef.position.set(new Vector2(((i+0.5f)*1.0f/width)*renderer.getCamera().viewportWidth,(height -j-0.5f)*1.0f/height*renderer.getCamera().viewportHeight));
+						   tileBodyDef.position.set(new Vector2((i+0.5f)*tileWidth,(height -j-0.5f)*tileHeight));
 				           // Not very clear about the box, world, pixel units conversion here.
 						   // Also the order of y coordinates have to be flipped
 						   Body tileBody = world.createBody(tileBodyDef);
 				           PolygonShape tileBox = new PolygonShape();
-				           tileBox.setAsBox(renderer.getCamera().viewportWidth*0.5f/width, renderer.getCamera().viewportHeight*0.5f/height);
+				           tileBox.setAsBox(tileWidth/2.0f, tileHeight/2.0f);
 				           tileFixture = tileBody.createFixture(tileBox, 0.0f);	
 				           tileArrayPreset.add(tileFixture);
 				           tileBox.dispose();
 						} else if ( Character.getNumericValue(ch) == 3) { // interior objects
 							// interior wall using circles -- might be more realistic when ddseeds move about them
 							BodyDef tileBodyDef = new BodyDef();
-							tileBodyDef.position.set(new Vector2(((i+0.5f)*1.0f/width)*renderer.getCamera().viewportWidth,(height -j-0.5f)*1.0f/height*renderer.getCamera().viewportHeight));
+							tileBodyDef.position.set(new Vector2((i+0.5f)*tileWidth,(height -j-0.5f)*tileHeight));
 					        Body tileBody = world.createBody(tileBodyDef);
 							CircleShape tileCircle = new CircleShape();
 							tileCircle.setRadius(2.0f);

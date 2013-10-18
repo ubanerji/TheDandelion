@@ -8,6 +8,7 @@ import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
 
@@ -37,6 +38,7 @@ public class DdSeeds {
 		BodyDef ddBodyDef = new BodyDef();
 		ddBodyDef.type = BodyType.DynamicBody;
 	    ddBodyDef.position.set(position);
+	    ddBodyDef.fixedRotation = false;
 	    Body ddBody = world.createBody(ddBodyDef);
 	    CircleShape ddCircle = new CircleShape();
 	    ddCircle.setRadius(10.0f); // the diameter
@@ -50,6 +52,6 @@ public class DdSeeds {
 	    // because of the need to use userdata, I have to make DdSeeds a separate class
 	    // because "this" will then be able to point to this instance
 	    ddArray.add(ddFixture);
-	    ddCircle.dispose();
+	    ddCircle.dispose();	    
 	}
 }

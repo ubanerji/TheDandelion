@@ -41,7 +41,7 @@ public class GameScreen implements Screen, InputProcessor {
 			points_current= points;
 			System.out.printf("Player points: %d \n", points_current);
 		}
-		renderer.render(); // main renderer and world steps in here. automatically 
+		renderer.render(points_current); // main renderer and world steps in here. automatically 
 		//called everytime from super.render in the DdBox2d class
 		
 	}
@@ -62,9 +62,9 @@ public class GameScreen implements Screen, InputProcessor {
 		HedgeContactListener listener = new HedgeContactListener();		
 		world.setContactListener(listener); 
 		// Create listener, which is automatically called to check whether collision happens
-		renderer = new WorldRenderer(world);
-		level = new Levels(world, renderer); // Need to pass camera dimensions through renderer
 		actor = new Actors(); // Empty construction
+		level = new Levels(world); // Need to pass camera dimensions through renderer		
+		renderer = new WorldRenderer(world, actor, level);		
 		controller = new WorldController(world); // Empty construction
 		actor.addHedgeHog(new Vector2(300, 100), world); // Add HedgeHog in designated place
 		Gdx.input.setInputProcessor(this); // Initialing hardware input listener
@@ -97,6 +97,13 @@ public class GameScreen implements Screen, InputProcessor {
 	@Override
 	public boolean keyDown(int keycode) {
 		// TODO Auto-generated method stub
+		if (keycode == Keys.D){
+			if(renderer.isDebug() == false){
+				renderer.setDebug(true);
+			} else {
+				renderer.setDebug(false);
+			}
+		}
 		if (keycode == Keys.Z){
 		// when Z pressed, add one dandelion seed
 			actor.addDdSeeds(new Vector2(50,300), world);
