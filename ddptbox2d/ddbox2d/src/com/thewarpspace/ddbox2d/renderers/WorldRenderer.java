@@ -47,7 +47,13 @@ public class WorldRenderer {
 	}
 
 	public void render(Integer points){
-    	Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT);  
+		GL10 gl = Gdx.graphics.getGL10();
+		gl.glClearColor(1, 0, 0, 1);
+    	gl.glClear(GL10.GL_COLOR_BUFFER_BIT);  
+    	gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+    	camera.update();
+    	camera.apply(gl);
+    	spriteBatch.setProjectionMatrix(camera.combined);
 		spriteBatch.begin();
 		drawBackground(camera.viewportWidth, camera.viewportHeight);
 		drawHh();

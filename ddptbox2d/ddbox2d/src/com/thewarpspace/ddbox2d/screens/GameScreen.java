@@ -143,8 +143,22 @@ public class GameScreen implements Screen, InputProcessor {
 		// no effects on anything other than added tiles
 		if(button == Input.Buttons.LEFT){
 			Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
+			System.out.println(position);
 			// need to scale, otherwise gamebox units inconsistent with screen display pixels
-			level.addTile(position, world);
+			if( position.x > 430 && position.y > 270) {
+				actor.addDdSeeds(new Vector2(50,300), world);
+			} else if (position.x > 430 && position.y < 50) {				
+				Vector2 gravity = new Vector2(r.nextInt(20)-10, r.nextInt(20)-10);
+				System.out.printf("Changed gravity to %f %f\n", gravity.x, gravity.y);
+				world.setGravity( gravity );
+				// Need to wake all bodies once gravity field changes
+				for(Iterator<Fixture> iterd = actor.getDdArray().iterator(); iterd.hasNext();) {
+			    	Fixture ftd = iterd.next();
+			    	ftd.getBody().setAwake(true);		    	
+			    }
+			}	else{
+				level.addTile(position, world);
+			}
 		} else if(button == Input.Buttons.RIGHT) {
 			Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
 			for (Iterator<Fixture> iter = level.getTileArrayModifiable().iterator(); iter.hasNext();) {
