@@ -9,6 +9,7 @@ import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
+import com.thewarpspace.ddbox2d.screens.GameScreen;
 
 public class HedgeHog {
 	int actorType;
@@ -37,7 +38,7 @@ public class HedgeHog {
 		hhBodyDef.position.set(position);
         Body hhBody = world.createBody(hhBodyDef);
         CircleShape hhCircle = new CircleShape();
-        hhCircle.setRadius(30.0f);
+        hhCircle.setRadius(GameScreen.SCALEVIEW*30.0f);
         FixtureDef fD = new FixtureDef();
         fD.shape = hhCircle;
         fD.isSensor = true; // This is important as HedgeHog will not trigger collision response,

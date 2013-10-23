@@ -9,7 +9,7 @@ public class Main {
 		cfg.title = "ddbox2d";
 		cfg.useGL20 = false;
 		cfg.width = 480;
-		cfg.height = 320;
+		cfg.height = 240;
 		
 		new LwjglApplication(new DdBox2d(), cfg);
 	}

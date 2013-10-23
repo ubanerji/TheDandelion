@@ -11,6 +11,7 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.physics.box2d.BodyDef.BodyType;
+import com.thewarpspace.ddbox2d.screens.GameScreen;
 
 public class DdSeeds {
 	int actorType;
@@ -41,12 +42,13 @@ public class DdSeeds {
 	    ddBodyDef.fixedRotation = false;
 	    Body ddBody = world.createBody(ddBodyDef);
 	    CircleShape ddCircle = new CircleShape();
-	    ddCircle.setRadius(10.0f); // the diameter
+	    ddCircle.setRadius(GameScreen.SCALEVIEW*4.0f); // the diameter
 	    FixtureDef fD = new FixtureDef();
 	    fD.shape = ddCircle; // physical properties of ddseeds can be set here
 	    fD.density = 0.1f;  
 	    fD.friction = 0.0f;  
 	    fD.restitution = 0.2f;  
+	    fD.filter.groupIndex = 1;
 	    Fixture ddFixture = ddBody.createFixture(fD);	
 	    ddFixture.getBody().setUserData(this);
 	    // because of the need to use userdata, I have to make DdSeeds a separate class

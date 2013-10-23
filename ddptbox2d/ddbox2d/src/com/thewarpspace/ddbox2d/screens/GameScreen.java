@@ -8,11 +8,14 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.utils.Array;
 import com.thewarpspace.ddbox2d.Actors;
 import com.thewarpspace.ddbox2d.DdSeeds;
 import com.thewarpspace.ddbox2d.Levels;
@@ -21,7 +24,11 @@ import com.thewarpspace.ddbox2d.controllers.WorldController;
 import com.thewarpspace.ddbox2d.renderers.WorldRenderer;
 
 public class GameScreen implements Screen, InputProcessor {
-
+	public static final float CAMERAVIEWWIDTH=480.0f; // This is the actual resolution of on-screen display
+	public static final float CAMERAVIEWHEIGHT=320.0f;  
+	public static final float SCALEVIEW= CAMERAVIEWHEIGHT/320.0f; // Scale everything when resolution changes
+	private static final float SEPARATION = 10.0f *SCALEVIEW;
+	private static final double CLEANRANGE = 10.0f *SCALEVIEW;
 	World world;
 	private Levels level;
 	private WorldRenderer renderer;
@@ -31,6 +38,14 @@ public class GameScreen implements Screen, InputProcessor {
 	private WorldController controller;
 	private Actors actor;
     int points, points_current;
+	private Vector2 ddSpawnPos = new Vector2();
+	private Vector2 hhSpawnPos = new Vector2();
+	private float dragAccumulator;
+	Vector2 dragOld = new Vector2(); // used to record drag path
+	private int dragOnFlag;
+	Random rand = new Random();
+	private Vector2 actualSpawnPos= new Vector2();
+	
 	
 	@Override
 	public void render(float delta) {
@@ -58,16 +73,19 @@ public class GameScreen implements Screen, InputProcessor {
 		// TODO Auto-generated method stub
 		points = 0;
 		points_current = 0; // Count player score
-		world = new World(new Vector2(0, -10), true); // Create new world
+		world = new World(new Vector2(0, -(int)(10*SCALEVIEW*SCALEVIEW)), true); // Create new world
 		HedgeContactListener listener = new HedgeContactListener();		
 		world.setContactListener(listener); 
 		// Create listener, which is automatically called to check whether collision happens
 		actor = new Actors(); // Empty construction
-		level = new Levels(world); // Need to pass camera dimensions through renderer		
+		level = new Levels(world, ddSpawnPos, hhSpawnPos); // Need to pass camera dimensions through renderer, now just directly set to value. 
 		renderer = new WorldRenderer(world, actor, level);		
 		controller = new WorldController(world); // Empty construction
-		actor.addHedgeHog(new Vector2(300, 100), world); // Add HedgeHog in designated place
+		System.out.println(hhSpawnPos);
+		actor.addHedgeHog(hhSpawnPos, world); // Add HedgeHog in designated place
 		Gdx.input.setInputProcessor(this); // Initialing hardware input listener
+		dragAccumulator = 0f;
+		dragOnFlag = 0;		
 	}
 
 	@Override
@@ -106,11 +124,13 @@ public class GameScreen implements Screen, InputProcessor {
 		}
 		if (keycode == Keys.Z){
 		// when Z pressed, add one dandelion seed
-			actor.addDdSeeds(new Vector2(50,300), world);
+			actualSpawnPos.x = ddSpawnPos.x - rand.nextFloat()*10.0f*SCALEVIEW;
+			actualSpawnPos.y = ddSpawnPos.y - rand.nextFloat()*10.0f*SCALEVIEW;
+			actor.addDdSeeds(actualSpawnPos, world);
 		}
 		if (keycode == Keys.X){			
 		// when X pressed, change the direction of gravity
-			Vector2 gravity = new Vector2(r.nextInt(20)-10, r.nextInt(20)-10);
+			Vector2 gravity = new Vector2((int)((r.nextInt(20)-10)*SCALEVIEW*SCALEVIEW), (int)((r.nextInt(20)-10)*SCALEVIEW*SCALEVIEW));
 			System.out.printf("Changed gravity to %f %f\n", gravity.x, gravity.y);
 			world.setGravity( gravity );
 			// Need to wake all bodies once gravity field changes
@@ -145,10 +165,12 @@ public class GameScreen implements Screen, InputProcessor {
 			Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
 			System.out.println(position);
 			// need to scale, otherwise gamebox units inconsistent with screen display pixels
-			if( position.x > 430 && position.y > 270) {
-				actor.addDdSeeds(new Vector2(50,300), world);
-			} else if (position.x > 430 && position.y < 50) {				
-				Vector2 gravity = new Vector2(r.nextInt(20)-10, r.nextInt(20)-10);
+			if( position.x > CAMERAVIEWWIDTH*0.9f && position.y > CAMERAVIEWHEIGHT*0.9f) {
+				actualSpawnPos.x = ddSpawnPos.x - rand.nextFloat()*10.0f*SCALEVIEW;
+				actualSpawnPos.y = ddSpawnPos.y - rand.nextFloat()*10.0f*SCALEVIEW;
+				actor.addDdSeeds(actualSpawnPos, world);
+			} else if (position.x > CAMERAVIEWWIDTH*0.9f && position.y < CAMERAVIEWHEIGHT*0.1f) {				
+				Vector2 gravity = new Vector2((int)((r.nextInt(20)-10)*SCALEVIEW*SCALEVIEW), (int)((r.nextInt(20)-10)*SCALEVIEW*SCALEVIEW));
 				System.out.printf("Changed gravity to %f %f\n", gravity.x, gravity.y);
 				world.setGravity( gravity );
 				// Need to wake all bodies once gravity field changes
@@ -156,26 +178,30 @@ public class GameScreen implements Screen, InputProcessor {
 			    	Fixture ftd = iterd.next();
 			    	ftd.getBody().setAwake(true);		    	
 			    }
-			}	else{
-				level.addTile(position, world);
+			}	
+			else if (position.x < CAMERAVIEWWIDTH*0.1f && position.y < CAMERAVIEWHEIGHT*0.1f) {				
+				if(!renderer.isTileReset()) renderer.setTileReset(true);
+			}	
+			else{
+				renderer.removeTileRender(new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height)));
 			}
-		} else if(button == Input.Buttons.RIGHT) {
+		} 
+		if(button == Input.Buttons.RIGHT) {
 			Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
 			for (Iterator<Fixture> iter = level.getTileArrayModifiable().iterator(); iter.hasNext();) {
 				Fixture ft = iter.next();
-			     if (Math.sqrt((ft.getBody().getPosition().x - position.x)*(ft.getBody().getPosition().x - position.x) +(ft.getBody().getPosition().y - position.y)*(ft.getBody().getPosition().y - position.y)) < 3.0f) {
+			     if (Math.sqrt((ft.getBody().getPosition().x - position.x)*(ft.getBody().getPosition().x - position.x) +(ft.getBody().getPosition().y - position.y)*(ft.getBody().getPosition().y - position.y)) < CLEANRANGE) {
 			    	 controller.removeBodySafely(world, ft.getBody());
 			    	 // need to call to remove everything related to body safely
 			    	 iter.remove();
 			    	 // need to remove this guy out of the array to keep good track
-			     }
-			     
+			     }			     
 			}
 		} else if(button == Input.Buttons.MIDDLE) {
 			Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
 			for (Iterator<Fixture> iter = level.getTileArrayPreset().iterator(); iter.hasNext();) {
 			    Fixture ft = iter.next();
-				if (Math.sqrt((ft.getBody().getPosition().x - position.x)*(ft.getBody().getPosition().x - position.x) +(ft.getBody().getPosition().y - position.y)*(ft.getBody().getPosition().y - position.y)) < 3.0f) {
+				if (Math.sqrt((ft.getBody().getPosition().x - position.x)*(ft.getBody().getPosition().x - position.x) +(ft.getBody().getPosition().y - position.y)*(ft.getBody().getPosition().y - position.y)) < CLEANRANGE) {
 			    	 controller.removeBodySafely(world, ft.getBody());
 			    	 iter.remove();
 			     }
@@ -187,12 +213,54 @@ public class GameScreen implements Screen, InputProcessor {
 	@Override
 	public boolean touchUp(int screenX, int screenY, int pointer, int button) {
 		// TODO Auto-generated method stub
+		dragOnFlag = 0; // Clear flag at end of drag
 		return false;
 	}
 
 	@Override
 	public boolean touchDragged(int screenX, int screenY, int pointer) {
 		// TODO Auto-generated method stub
+		Vector2 position = new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
+		Vector2 distVec2 = new Vector2();
+		// need to scale, otherwise gamebox units inconsistent with screen display pixels
+		if (dragOnFlag == 0) { // when drag first happens
+			dragOld.x = position.x;
+			dragOld.y = position.y;
+			dragAccumulator = 0;
+			dragOnFlag = 1;
+			if( position.x > CAMERAVIEWWIDTH*0.9f && position.y > CAMERAVIEWHEIGHT*0.9f) {
+				
+			} else if (position.x > CAMERAVIEWWIDTH*0.9f && position.y < CAMERAVIEWHEIGHT*0.1f) {				
+				
+			}	else{
+				level.addTile(position, world, rand.nextFloat()*360f);
+			}
+						
+		} else { // when drag continues
+			dragAccumulator += position.dst(dragOld) ;	
+			if(dragAccumulator > SEPARATION) {
+				distVec2.x = position.x; // caution not to use distVec2 = position
+				distVec2.y = position.y;
+				distVec2 = distVec2.sub(dragOld);
+				int nSegs = (int)(dragAccumulator/SEPARATION); // to make sure the added grass tiles look continuous
+				// this is useful when the player drag across screen real fast
+				distVec2.div((float)nSegs); // get the vector for each segment
+				for(int i = 0; i< nSegs; i++) {							
+					if( dragOld.x > CAMERAVIEWWIDTH*0.9f && dragOld.y > CAMERAVIEWHEIGHT*0.9f) {
+						
+					} else if (dragOld.x > CAMERAVIEWWIDTH*0.9f && dragOld.y < CAMERAVIEWHEIGHT*0.1f) {				
+						
+					}	else{
+						level.addTile(dragOld, world, rand.nextFloat()*360f); // give grass random rotation						
+					}
+					dragOld.add(distVec2 ); // dragOld added towards current position
+				}
+				dragAccumulator = 0; // ready for next round
+			}
+			dragOld.x = position.x;
+			dragOld.y = position.y;
+		} 		
+		
 		return false;
 	}
 
