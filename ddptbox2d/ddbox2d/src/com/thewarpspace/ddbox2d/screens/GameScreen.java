@@ -28,7 +28,7 @@ public class GameScreen implements Screen, InputProcessor {
 	public static final float CAMERAVIEWHEIGHT=320.0f;  
 	public static final float SCALEVIEW= CAMERAVIEWHEIGHT/320.0f; // Scale everything when resolution changes
 	private static final float SEPARATION = 10.0f *SCALEVIEW;
-	private static final double CLEANRANGE = 10.0f *SCALEVIEW;
+	public static final float CLEANRANGE = 10.0f *SCALEVIEW;
 	World world;
 	private Levels level;
 	private WorldRenderer renderer;
@@ -183,7 +183,9 @@ public class GameScreen implements Screen, InputProcessor {
 				if(!renderer.isTileReset()) renderer.setTileReset(true);
 			}	
 			else{
-				renderer.removeTileRender(new Vector2(screenX *(renderer.getCamera().viewportWidth*1.0f/width), (height -screenY)*(renderer.getCamera().viewportHeight*1.0f/height)));
+				System.out.printf("Remover at position to %f %f\n", screenX *(renderer.getCamera().viewportWidth*1.0f/width), (screenY)*(renderer.getCamera().viewportHeight*1.0f/height));
+				controller.removeEdge(world, level, position);
+				renderer.removeTileRender(position); // This MUST be after removeEdge. Otherwise the newly created edges will be removed!				
 			}
 		} 
 		if(button == Input.Buttons.RIGHT) {
@@ -233,7 +235,7 @@ public class GameScreen implements Screen, InputProcessor {
 			} else if (position.x > CAMERAVIEWWIDTH*0.9f && position.y < CAMERAVIEWHEIGHT*0.1f) {				
 				
 			}	else{
-				level.addTile(position, world, rand.nextFloat()*360f);
+				level.addGrass(position, world, rand.nextFloat()*360f, 4);
 			}
 						
 		} else { // when drag continues
@@ -251,7 +253,7 @@ public class GameScreen implements Screen, InputProcessor {
 					} else if (dragOld.x > CAMERAVIEWWIDTH*0.9f && dragOld.y < CAMERAVIEWHEIGHT*0.1f) {				
 						
 					}	else{
-						level.addTile(dragOld, world, rand.nextFloat()*360f); // give grass random rotation						
+						level.addGrass(dragOld, world, rand.nextFloat()*360f, 4); // give grass random rotation						
 					}
 					dragOld.add(distVec2 ); // dragOld added towards current position
 				}

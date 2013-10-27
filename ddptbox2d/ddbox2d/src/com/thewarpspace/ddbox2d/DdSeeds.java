@@ -17,6 +17,7 @@ public class DdSeeds {
 	int actorType;
 	boolean toRemove = false; // flag to be used by ContactListener to mark possible removal
 	// so later in the controller loops the actual removal can be done.
+	Fixture ddFixture;
 	
 	public int getActorType() {
 		return actorType;
@@ -34,7 +35,11 @@ public class DdSeeds {
 		this.toRemove = toRemove;
 	}
 
-	public DdSeeds(ArrayList<Fixture> ddArray, Vector2 position, World world){
+	public Fixture getDdFixture() {
+		return ddFixture;
+	}
+
+	public DdSeeds(Vector2 position, World world){
 		actorType = 1;
 		BodyDef ddBodyDef = new BodyDef();
 		ddBodyDef.type = BodyType.DynamicBody;
@@ -46,14 +51,13 @@ public class DdSeeds {
 	    FixtureDef fD = new FixtureDef();
 	    fD.shape = ddCircle; // physical properties of ddseeds can be set here
 	    fD.density = 0.1f;  
-	    fD.friction = 0.0f;  
+	    fD.friction = 1.0f;  
 	    fD.restitution = 0.2f;  
 	    fD.filter.groupIndex = 1;
-	    Fixture ddFixture = ddBody.createFixture(fD);	
+	    ddFixture = ddBody.createFixture(fD);	
 	    ddFixture.getBody().setUserData(this);
 	    // because of the need to use userdata, I have to make DdSeeds a separate class
 	    // because "this" will then be able to point to this instance
-	    ddArray.add(ddFixture);
 	    ddCircle.dispose();	    
 	}
 }

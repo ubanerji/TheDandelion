@@ -25,11 +25,13 @@ public class Actors {
 	}	
 	
 	public void addDdSeeds(Vector2 position, World world){
-		DdSeeds dd = new DdSeeds(ddArray, position, world);
+		DdSeeds dd = new DdSeeds(position, world);
+		ddArray.add(dd.getDdFixture());
 	}
 	
 	public void addHedgeHog(Vector2 position, World world){
-		HedgeHog hh = new HedgeHog(hhArray, position, world);
+		HedgeHog hh = new HedgeHog(position, world);
+		hhArray.add(hh.getHhFixture());
 	}
 
 }

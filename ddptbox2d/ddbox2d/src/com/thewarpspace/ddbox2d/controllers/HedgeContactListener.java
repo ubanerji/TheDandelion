@@ -7,6 +7,8 @@ import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.thewarpspace.ddbox2d.DdSeeds;
 import com.thewarpspace.ddbox2d.HedgeHog;
+import com.thewarpspace.ddbox2d.TileEdges;
+import com.thewarpspace.ddbox2d.Tiles;
 
 public class HedgeContactListener implements ContactListener {
 	
@@ -36,6 +38,7 @@ public class HedgeContactListener implements ContactListener {
 			dd.setToRemove(true);
 			// System.out.println("DD collides with HH");
 		 }
+
 	}
 
 	@Override

@@ -1,0 +1,2 @@
+This is supposed to do marching square, reducing using RDP, then do triangulation.
+Though the first two steps work, even for holes, triangulation is buggy and stops at the very beginning when searching through Graph.
