@@ -13,8 +13,7 @@ public class Actors {
 	ArrayList<Fixture> ddArray = new ArrayList<Fixture>();
 	ArrayList<Fixture> hhArray = new ArrayList<Fixture>();
 	
-	public Actors(){		
-	}
+	public Actors(){}
 	
 	public ArrayList<Fixture> getDdArray() {
 		return ddArray;

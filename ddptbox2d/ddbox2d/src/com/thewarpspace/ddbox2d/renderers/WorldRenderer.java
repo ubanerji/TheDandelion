@@ -10,9 +10,11 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Pixmap.Blending;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
@@ -30,16 +32,23 @@ public class WorldRenderer {
 	Box2DDebugRenderer debugRenderer;  
     OrthographicCamera camera;
 	private Texture ddTexture;
-	private Texture bgTexture;  
-	private Texture hhTexture;
-    static final float BOX_STEP=1/60f;  
-    static final int BOX_VELOCITY_ITERATIONS=6;  
-    static final int BOX_POSITION_ITERATIONS=2;  
-    static final float WORLD_TO_BOX=0.01f;  
-    static final float BOX_WORLD_TO=100f;      
-    
-    SpriteBatch spriteBatch = new SpriteBatch();
-    Array<Sprite> grassSprite = new Array<Sprite> ();
+	private Texture bgTexture; 
+	
+	private Animation hhAnimation; // Change hhTexture to hhAnimation.
+	private float hhStateTime;
+	private TextureRegion hhFrame;
+	
+	static final float BOX_STEP = 1 / 60f;
+	static final int BOX_VELOCITY_ITERATIONS = 6;
+	static final int BOX_POSITION_ITERATIONS = 2;
+	static final float WORLD_TO_BOX = 0.01f;
+	static final float BOX_WORLD_TO = 100f;
+	
+	static final int HHFRAME_COLS = 7;
+	static final int HHFRAME_ROWS = 1;
+	
+	SpriteBatch spriteBatch = new SpriteBatch();
+	Array<Sprite> grassSprite = new Array<Sprite>();
 	private Actors actor;
 	private Levels level;
 	boolean debug = false;
@@ -52,6 +61,7 @@ public class WorldRenderer {
 	private boolean tileReset;
 	Sprite theCanvas = new Sprite();
 	private ShapeRenderer debugShapeRenderer;
+
 	public boolean isDebug() {
 		return debug;
 	}
@@ -79,25 +89,33 @@ public class WorldRenderer {
 	public void render(Integer points){
 		GL10 gl = Gdx.graphics.getGL10();
 		gl.glClearColor(0, 0, 0, 1);
-    	gl.glClear(GL10.GL_COLOR_BUFFER_BIT);  
-    	gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-    	camera.update();
-    	camera.apply(gl);
-    	spriteBatch.setProjectionMatrix(camera.combined);    	
-		spriteBatch.begin();		
+		gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
+		gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		camera.update();
+		camera.apply(gl);
+		spriteBatch.setProjectionMatrix(camera.combined);
+		spriteBatch.begin();
 		drawBackground(camera.viewportWidth, camera.viewportHeight);
 		debugShapeRenderer.setProjectionMatrix(camera.combined);
+		
 		drawHh();
-		drawDd();		
+		drawDd();
 		drawTiles();
-		drawTilesNew();	
-		textToDisplay = "Player Score: " + points.toString() +" ; Gravity: " + world.getGravity().toString();
-		font.setScale(GameScreen.SCALEVIEW*1.0f, GameScreen.SCALEVIEW*1.2f);
-		font.draw(spriteBatch, textToDisplay, GameScreen.CAMERAVIEWHEIGHT*0.05f, GameScreen.CAMERAVIEWHEIGHT*0.1f); 		
+		drawTilesNew();
+		
+		textToDisplay = "Player Score: " + points.toString() + " ; Gravity: "
+				+ world.getGravity().toString();
+		font.setScale(GameScreen.SCALEVIEW * 1.0f, GameScreen.SCALEVIEW * 1.2f);
+		font.draw(spriteBatch, textToDisplay,
+				  GameScreen.CAMERAVIEWHEIGHT * 0.05f,
+				  GameScreen.CAMERAVIEWHEIGHT * 0.1f);	
+
 		spriteBatch.end();
+		
 		if(debug) {
 			debugRenderer.render(world, camera.combined);  
 		}
+		
         world.step(BOX_STEP, BOX_VELOCITY_ITERATIONS, BOX_POSITION_ITERATIONS);  
         world.clearForces(); // As told in manual, this is needed
     }
@@ -110,75 +128,102 @@ public class WorldRenderer {
 			pixmap.setColor(-256);
 			pixmap.fill(); // flush pixmap with transparent color
 			long bt1 = System.currentTimeMillis();
-			byte[] wallsBuffer = level.getWallsBuffer(); // the walls[] maintains only boundary bodies, while wallsBuffer[] maintains entire level map, caution expanded dimensions
+			// the walls[] maintains only boundary bodies, while wallsBuffer[] 
+			// maintains entire level map, caution expanded dimensions
+			byte[] wallsBuffer = level.getWallsBuffer(); 
 			float[] extent = level.getExtent(); // stores the random extension from the tile point for pixel region
-			for(int i = 1;i< level.getWidth()+1;i++){
-				for(int j = 1;j<level.getHeight()+1;j++){
-					if(wallsBuffer[i + j*(level.getWidth()+2)] == 3 || wallsBuffer[i + j*(level.getWidth()+2)] ==2){
+			for (int i = 1; i < level.getWidth() + 1; i++) {
+				for (int j = 1; j < level.getHeight() + 1; j++) {
+					if (wallsBuffer[i + j * (level.getWidth() + 2)] == 3
+							|| wallsBuffer[i + j * (level.getWidth() + 2)] == 2) {
 						// if the present point is a tile, render its surrounding
-						testC = new Vector2((i-0.5f)*level.getTileWidth(), (j-0.5f)*level.getTileHeight());
-						for(int ix = -8; ix< 8; ix++) { // scan the square region around the tile point to find points within a radius
-							for(int iy = -8; iy<8; iy++){
-								testS = new Vector2((i-0.5f)*level.getTileWidth()+ix, (j-0.5f)*level.getTileHeight()+iy);
-								if(testC.dst2(testS) < 10f + extent[(i-1) + (j-1)*level.getWidth()] ){
-									pixmap.drawPixel((int)(testS.x), (int)(testS.y), pixmapSav.getPixel((int)(testS.x), (int)(testS.y)));
-									// if the pixels are within 20f + random radius of the tile point, then draw them using the previously saved pixmap
+						testC = new Vector2((i - 0.5f) * level.getTileWidth(),
+											(j - 0.5f) * level.getTileHeight());
+						for (int ix = -8; ix < 8; ix++) {
+							// scan the square region around the tile point to find points within a radius
+							for (int iy = -8; iy < 8; iy++) {
+								testS = new Vector2((i - 0.5f) * level.getTileWidth() + ix, 
+													(j - 0.5f) * level.getTileHeight() + iy);
+								if (testC.dst2(testS) < 10f + extent[(i - 1) + (j - 1) * level.getWidth()]) {
+									pixmap.drawPixel((int)(testS.x), 
+													 (int)(testS.y), 
+													 pixmapSav.getPixel((int)(testS.x), (int)(testS.y)));
+									// if the pixels are within 20f + random radius of the tile point, 
+									// then draw them using the previously saved pixmap
 								}
 							}
 						}					
 					}
 				}
 			}
-			for(int i = 1;i< pixmap.getWidth()-1;i++){
-				for(int j = 1;j<pixmap.getHeight()-1;j++){
-					if(pixmap.getPixel(i, j) != -256) { // if this is a non-transparent point, which means it's a tile-pixmap region point
-						if(pixmap.getPixel(i-1, j) != -256 && pixmap.getPixel(i+1, j) != -256 &&pixmap.getPixel(i, j-1) != -256 &&pixmap.getPixel(i, j+1) != -256 ) {
-							// if the point has no neighbor as transparent point. It indicates this point sits at the interior of the pixel region
+			
+			for (int i = 1; i < pixmap.getWidth() - 1; i++) {
+				for (int j = 1; j < pixmap.getHeight() - 1; j++) {
+					if (pixmap.getPixel(i, j) != -256) {
+						// if this is a non-transparent point, which means it's a tile-pixmap region point
+						if (pixmap.getPixel(i - 1, j) != -256
+								&& pixmap.getPixel(i + 1, j) != -256
+								&& pixmap.getPixel(i, j - 1) != -256
+								&& pixmap.getPixel(i, j + 1) != -256) {
+							// if the point has no neighbor as transparent point. 
+							// It indicates this point sits at the interior of the pixel region
 						} else {
 							pixmap.drawPixel(i, j, Color.rgba8888(Color.YELLOW));	
 							// otherwise this point is at the boundary, which is a contour point. Draw the contour
 						}
 					}					
 				}
-			}			
+			}	
+			
 			tileNewTexture.draw(pixmap, 0, 0); // if I created new Texture each time, there will be memory leak
-			int[][] byteMap = new int[pixmap.getWidth()+1][pixmap.getHeight()+1];
-			for(int i = 0; i< pixmap.getWidth()+1; i++){
-				for(int j = 0; j< pixmap.getHeight()+1; j++){
-					if(pixmap.getPixel(i, j) == -256) {
+			int[][] byteMap = new int[pixmap.getWidth() + 1][pixmap.getHeight() + 1];
+			for (int i = 0; i < pixmap.getWidth() + 1; i++) {
+				for (int j = 0; j < pixmap.getHeight() + 1; j++) {
+					if (pixmap.getPixel(i, j) == -256) {
 						byteMap[i][j] = 1;
-					} else{
+					} else {
 						byteMap[i][j] = -1;
 					}
 				}
 			}
+			
 			long bt2 = System.currentTimeMillis();
-			System.out.printf("yellow time  %d\n", bt2-bt1);			
+			System.out.printf("yellow time  %d\n", bt2 - bt1);
 			new CreateEdgeGeo(pixmap, camera, world, level); // create the edge-based geometry using the pixmap
 			tileReset = false;			
-		} 
+		}
 		spriteBatch.draw(tileNewTexture, 0, camera.viewportHeight -pixmap.getHeight());		
 	}
 	
-	public void removeTileRender(Vector2 vector2){ // removes tile texture only, will implement remove underlying bodies as well
-		ArrayList<Vector2> listOfArcPoints = new ArrayList<Vector2> ();
-		ArrayList<Vector2> listOfArcPointsBuff = new ArrayList<Vector2> ();
+	public void removeTileRender(Vector2 vector2) { // removes tile texture only, will implement remove underlying bodies as well
+		ArrayList<Vector2> listOfArcPoints = new ArrayList<Vector2>();
+		ArrayList<Vector2> listOfArcPointsBuff = new ArrayList<Vector2>();
 		ArrayList<ArrayList<Vector2>> listOfLists = new ArrayList<ArrayList<Vector2>>();
-		ArrayList<Float> listOfAngles = new ArrayList<Float> ();
-		Vector2 center = new Vector2(vector2.x, (camera.viewportHeight - vector2.y)) ;
+		ArrayList<Float> listOfAngles = new ArrayList<Float>();
+		Vector2 center = new Vector2(vector2.x,
+									 (camera.viewportHeight - vector2.y));
+
 		float rad = GameScreen.CLEANRANGE;
 		float threshold = 1.5f; // controls how many extra points near the remover cycle should be searched for adding to list
 		float thrshold = 5f; // controls the list generation: how close should the points be to be considered belonging to same list
 	    int seg = 15;  // control the the number of points in the list to create less edges
 		pixmap.setColor(-256);
-		pixmap.fillCircle((int)center.x, (int)center.y, (int) rad ); // flush pixmap with transparent color		
+		pixmap.fillCircle((int) center.x, (int) center.y, (int) rad); // flush pixmap with transparent color		
 		// Add contour around the removed pixel region
-		for(int i = (int) center.x- (int) (rad*1.5);i< (int) center.x +(int) (rad*1.5);i++){
-			for(int j = (int)center.y -(int) (rad*1.5);j<(int)center.y+(int) (rad*1.5);j++){
-				float dist = (float) Math.sqrt((i- (int)center.x)*(i-(int)center.x) + (j-(int)center.y)*(j-(int)center.y));
-				if( dist < rad + threshold) {
-					if(pixmap.getPixel(i, j) != -256 ) {
-						if(pixmap.getPixel(i-1, j) != -256 && pixmap.getPixel(i+1, j) != -256 &&pixmap.getPixel(i, j-1) != -256 &&pixmap.getPixel(i, j+1) != -256 ) {
+		for (int i = (int) center.x - (int) (rad * 1.5); 
+				i < (int) center.x + (int) (rad * 1.5); 
+				i++) {
+			for (int j = (int) center.y - (int) (rad * 1.5); 
+					j < (int) center.y + (int) (rad * 1.5); 
+					j++) {
+				float dist = (float) Math.sqrt((i - (int) center.x) * (i - (int) center.x) 
+						+ (j - (int) center.y) * (j - (int) center.y));
+				if (dist < rad + threshold) {
+					if (pixmap.getPixel(i, j) != -256) {
+						if (pixmap.getPixel(i - 1, j) != -256
+								&& pixmap.getPixel(i + 1, j) != -256
+								&& pixmap.getPixel(i, j - 1) != -256
+								&& pixmap.getPixel(i, j + 1) != -256) {
 							
 						} else {
 							pixmap.drawPixel(i, j, Color.rgba8888(Color.YELLOW));
@@ -192,29 +237,27 @@ public class WorldRenderer {
 		
 		// Bubble sorting the points according to angle
 		boolean flag = true;
-	    while ( flag )
-	     { 
-	            flag= false;    //set flag to false awaiting a possible swap
-	            for( int j=0;  j < listOfAngles.size() -1;  j++ )
-	            {
-	                   if ( listOfAngles.get(j) < listOfAngles.get(j+1) )   // change to > for ascending sort
-	                   {
-	                          Collections.swap(listOfAngles, j, j+1);
-	                          Collections.swap(listOfArcPoints, j, j+1);
-	                          flag = true;              //shows a swap occurred  
-	                  } 
-	            } 
-	      } 
+		while (flag) {
+			flag = false; // set flag to false awaiting a possible swap
+			for (int j = 0; j < listOfAngles.size() - 1; j++) {
+				if (listOfAngles.get(j) < listOfAngles.get(j + 1)) // change to > for ascending sort
+				{
+					Collections.swap(listOfAngles, j, j + 1);
+					Collections.swap(listOfArcPoints, j, j + 1);
+					flag = true; // shows a swap occurred
+				}
+			}
+		}
 	    // create several lists for those contour points on the remover circle
-	    for(int i = 0;i<listOfArcPoints.size(); i++){
-	    	if(i != listOfArcPoints.size()-1 ) {
-		    	if(listOfArcPoints.get(i+1).dst(listOfArcPoints.get(i)) < thrshold) { 
+		for (int i = 0; i < listOfArcPoints.size(); i++) {
+			if (i != listOfArcPoints.size() - 1) {
+				if (listOfArcPoints.get(i + 1).dst(listOfArcPoints.get(i)) < thrshold) {
 		    		// if two points are close to each other, they belong to the same list
 		    		listOfArcPointsBuff.add(listOfArcPoints.get(i));
 		    	} else {
 		    		listOfArcPointsBuff.add(listOfArcPoints.get(i));
 		    		listOfLists.add(listOfArcPointsBuff);
-		    		listOfArcPointsBuff = new ArrayList<Vector2>();
+					listOfArcPointsBuff = new ArrayList<Vector2>();
 		    	}
 	    	} else {
 	    		if(listOfArcPoints.get(0).dst(listOfArcPoints.get(i)) < thrshold) {
@@ -230,17 +273,17 @@ public class WorldRenderer {
 	    	}
 	    }
 	    // reduce the number of points in the list to create less edges
-	    int counter =0;
-	    for(Iterator<ArrayList<Vector2>> iter = listOfLists.iterator();iter.hasNext();){
-	    	ArrayList<Vector2> list = (ArrayList<Vector2>) iter.next();
-	    	int skipper = (int) (list.size()/seg) ;	    	
-	    	if(list.size() >  seg +1) {
+		int counter = 0;
+		for (Iterator<ArrayList<Vector2>> iter = listOfLists.iterator(); iter.hasNext();) {
+			ArrayList<Vector2> list = (ArrayList<Vector2>) iter.next();
+			int skipper = (int) (list.size() / seg);
+			if (list.size() > seg + 1) {
 	    		counter = 0;
 	    		int savSize = list.size();
-		    	for(Iterator<Vector2> iter1 = list.iterator(); iter1.hasNext();){
+				for (Iterator<Vector2> iter1 = list.iterator(); iter1.hasNext();) {
 		    		iter1.next();
 		    		if(counter % skipper != 0) { 
-		    			if(counter != savSize -1) {
+		    			if(counter != savSize - 1) {
 		    				iter1.remove();
 		    			}
 		    		}
@@ -249,47 +292,60 @@ public class WorldRenderer {
 	    	}
 	    }	    
 	    // make edges around the remover to seal the removed geometry (not too good seal at this point)
-		for(Iterator<ArrayList<Vector2>> iter = listOfLists.iterator();iter.hasNext();){
+		for (Iterator<ArrayList<Vector2>> iter = listOfLists.iterator(); iter.hasNext();) {
 		    ArrayList<Vector2> list = (ArrayList<Vector2>) iter.next();    
 		    Vector2 edgeStart = new Vector2();
 			Vector2 edgeEnd = new Vector2();
-			for(int i = 0 ; i < list.size()-1; i ++){
-				edgeStart.set(list.get(i)) ;			
-				edgeEnd.set(list.get(i+1));
-				edgeStart.y = camera.viewportHeight -edgeStart.y;
-				edgeEnd.y = camera.viewportHeight -edgeEnd.y;
-				level.addTileEdge(edgeStart, edgeEnd, world);			
+			for (int i = 0; i < list.size() - 1; i++) {
+				edgeStart.set(list.get(i));
+				edgeEnd.set(list.get(i + 1));
+				edgeStart.y = camera.viewportHeight - edgeStart.y;
+				edgeEnd.y = camera.viewportHeight - edgeEnd.y;
+				level.addTileEdge(edgeStart, edgeEnd, world);
 			}	
 		}		
 		tileNewTexture.draw(pixmap, 0, 0);
 	}
 
 	private void drawTiles() {
-		for(Iterator<Fixture> iter = level.getTileArrayModifiable().iterator(); iter.hasNext();) {
+		for (Iterator<Fixture> iter = level.getTileArrayModifiable().iterator(); iter.hasNext();) {
 	    	Fixture ft = iter.next();
 	    	Tiles tile = (Tiles) ft.getBody().getUserData();
 	    	Sprite grassSprite = new Sprite(grassTexture);
-	    	grassSprite.setPosition(ft.getBody().getPosition().x - grassSprite.getWidth()/2.0f, ft.getBody().getPosition().y- grassSprite.getHeight()/2.0f );
-	    	grassSprite.setScale(0.4f*GameScreen.SCALEVIEW);
-	    	grassSprite.setRotation(tile.getRotAngle());
-	    	grassSprite.draw(spriteBatch);
+	    	grassSprite.setPosition(ft.getBody().getPosition().x - grassSprite.getWidth() / 2.0f,
+	    			                ft.getBody().getPosition().y - grassSprite.getHeight() / 2.0f);
+			grassSprite.setScale(0.4f * GameScreen.SCALEVIEW);
+			grassSprite.setRotation(tile.getRotAngle());
+			grassSprite.draw(spriteBatch);
 	    }
 	}
 
 	private void drawDd() {
 		// TODO Auto-generated method stub
-		for(Iterator<Fixture> iter = actor.getDdArray().iterator(); iter.hasNext();) {
+		for (Iterator<Fixture> iter = actor.getDdArray().iterator(); iter.hasNext();) {
 	    	Fixture ft = iter.next();
-	    	spriteBatch.draw(ddTexture, ft.getBody().getPosition().x - 10.0f*GameScreen.SCALEVIEW, ft.getBody().getPosition().y - 10.0f*GameScreen.SCALEVIEW, 20.0f*GameScreen.SCALEVIEW, 20.0f*GameScreen.SCALEVIEW);
+	    	spriteBatch.draw(ddTexture, 
+	    			         ft.getBody().getPosition().x - 10.0f * GameScreen.SCALEVIEW, 
+	    			         ft.getBody().getPosition().y - 10.0f * GameScreen.SCALEVIEW, 
+	    			         20.0f * GameScreen.SCALEVIEW, 
+	    			         20.0f * GameScreen.SCALEVIEW);
 	    }
 	}
 
 	private void drawHh() {
 		// TODO Auto-generated method stub
-		for(Iterator<Fixture> iter = actor.getHhArray().iterator(); iter.hasNext();) {
+		for (Iterator<Fixture> iter = actor.getHhArray().iterator(); iter.hasNext();) {
+			// Get system render time, default value is 0.173s
+			hhStateTime += Gdx.graphics.getDeltaTime();
+			hhFrame = hhAnimation.getKeyFrame(hhStateTime, true);
+
 			Fixture ft = iter.next();
-	    	spriteBatch.draw(hhTexture, ft.getBody().getPosition().x - 30.0f*GameScreen.SCALEVIEW, ft.getBody().getPosition().y - 30.0f*GameScreen.SCALEVIEW, 60.f*GameScreen.SCALEVIEW, 60.f*GameScreen.SCALEVIEW);
-	    }
+			spriteBatch.draw(hhFrame, 
+					         ft.getBody().getPosition().x - 20.0f * GameScreen.SCALEVIEW,
+					         ft.getBody().getPosition().y - 20.0f * GameScreen.SCALEVIEW,
+					         30.f * GameScreen.SCALEVIEW,
+					         30.f * GameScreen.SCALEVIEW);
+		}
 	}
 
 	private void drawBackground(float width, float height) {
@@ -304,7 +360,7 @@ public class WorldRenderer {
 		camera = new OrthographicCamera();  
         camera.viewportHeight = GameScreen.CAMERAVIEWHEIGHT;  
         camera.viewportWidth = GameScreen.CAMERAVIEWWIDTH;  
-        camera.position.set(camera.viewportWidth * .5f, camera.viewportHeight * .5f, 0f);  
+        camera.position.set(camera.viewportWidth * 0.5f, camera.viewportHeight * 0.5f, 0f);  
         camera.update();
         loadTextures();
         font = new BitmapFont();
@@ -316,13 +372,34 @@ public class WorldRenderer {
 	private void loadTextures() {
 		// TODO Auto-generated method stub
 		ddTexture = new Texture(Gdx.files.internal("data/dandelion.png"));
-		hhTexture = new Texture(Gdx.files.internal("data/hedgehog.png"));
-		new Texture(Gdx.files.internal("data/tiledirt.png"));
+		
+		// Change hhTexture to hhAnimation.
+		loadhhAnimation();	
+		
 		bgTexture = new Texture(Gdx.files.internal("data/background.png"));
 		grassTexture = new Texture(Gdx.files.internal("data/grass.png"));
 		pixmap = new Pixmap(Gdx.files.internal("data/tilepattern.png"));
 		pixmapSav = new Pixmap(Gdx.files.internal("data/tilepattern.png")); // copy this pixel for later use
 		pixmap.setBlending(Blending.None); // Blending is none, so new pixel can replace the old ones		
 		tileNewTexture  = new Texture(pixmap);
+	}
+	
+	private void loadhhAnimation() {
+		Texture hhSheet = new Texture(Gdx.files.internal("data/hedgehog2.png"));
+		TextureRegion[][] hhRegion = TextureRegion.split(hhSheet,
+													     hhSheet.getWidth() / HHFRAME_COLS, 
+													     hhSheet.getHeight() / HHFRAME_ROWS);
+		
+		TextureRegion[] hhFrames = new TextureRegion[HHFRAME_COLS * HHFRAME_ROWS];	
+		int index = 0;
+		for (int i = 0; i < HHFRAME_ROWS; i++) {
+			for (int j = 0; j < HHFRAME_COLS; j++) {
+				hhFrames[index++] = hhRegion[i][j];
+			}
+		}
+		
+		hhAnimation = new Animation(0.3f, hhFrames);
+		hhAnimation.setPlayMode(hhAnimation.LOOP);
+		hhStateTime = 0f;		
 	}
 }
